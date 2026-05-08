@@ -20,7 +20,22 @@ O aplicativo funcionará como um **catálogo digital premium** para revendedores
 
 ---
 
-## 3. Divisão da Equipe (3 Programadores)
+## 3. Arquitetura Multi-Tenant (Múltiplas Revendedoras)
+
+Para garantir que cada revendedora tenha o seu próprio "banco de dados" isolado e seus próprios clientes, utilizaremos o padrão **Multi-tenant** via subcoleções no Firestore:
+
+- **Estrutura de Dados:**
+  - `Revendedoras` (Coleção) -> `{ID_da_Revendedora}` (Documento) -> `Produtos` (Subcoleção exclusiva)
+  - `Revendedoras` (Coleção) -> `{ID_da_Revendedora}` (Documento) -> `Clientes` (Subcoleção exclusiva)
+- **Conexão Cliente-Revendedora:**
+  - A revendedora compartilhará um **Deep Link único** (ex: `app.com/mayara`).
+  - Ao clicar, o aplicativo abre e vincula aquele celular permanentemente ao ID da revendedora.
+  - O cliente fará o cadastro simplificado (Nome e WhatsApp) no momento da primeira reserva. O cliente não precisa criar senhas complexas.
+- **Segurança:** As *Firebase Security Rules* garantirão que os dados de uma revendedora sejam inacessíveis para outras.
+
+---
+
+## 4. Divisão da Equipe (3 Programadores)
 
 ### 🧑‍💻 Programador 1: Back-end, Infra e IA
 **Foco principal:** Motor do aplicativo e banco de dados.
@@ -44,7 +59,7 @@ O aplicativo funcionará como um **catálogo digital premium** para revendedores
 
 ---
 
-## 4. Requisitos e Validações Técnicas (Mobile)
+## 5. Requisitos e Validações Técnicas (Mobile)
 
 Para garantir uma aplicação profissional, fluida e com padrão de mercado, a equipe de front-end deverá seguir estas diretrizes rigorosas:
 
@@ -63,7 +78,7 @@ Para garantir uma aplicação profissional, fluida e com padrão de mercado, a e
 
 ---
 
-## 5. Cronograma Macro
+## 6. Cronograma Macro
 
 - **Semana 1:** Setup de Banco de Dados (Prog 1) e Criação/Configuração inicial do repositório Flutter (Prog 2 e 3).
 - **Semana 2:** Integração de API do Gemini para texto/imagem (Prog 1), Criação do fluxo de upload (Prog 2) e Consumo dos dados simulados na UI principal (Prog 3).
