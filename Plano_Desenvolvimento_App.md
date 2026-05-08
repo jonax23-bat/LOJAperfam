@@ -35,7 +35,18 @@ Para garantir que cada revendedora tenha o seu próprio "banco de dados" isolado
 
 ---
 
-## 4. Divisão da Equipe (3 Programadores)
+## 4. Monetização e Planos de Assinatura (SaaS)
+
+O aplicativo funcionará no modelo de assinatura (Software como Serviço) para as revendedoras, com toda a gestão de pagamentos intermediada pelo **RevenueCat** (conectado ao Firebase). Os valores sugeridos para validação do mercado são:
+
+- **Plano Mensal (Sugerido: R$ 29,90/mês):** Acesso completo à vitrine digital, gestão de estoque e uso ilimitado da Inteligência Artificial para cadastro. Inclui 7 dias de teste grátis (Trial).
+- **Plano Anual (Sugerido: R$ 249,90/ano):** Pagamento com desconto agressivo para reter a revendedora no longo prazo.
+- **Plano Embaixadora (R$ 0,00):** Acesso VIP configurado manualmente no Firebase (`is_parceira_divulgacao: true`) para revendedoras estratégicas que ajudarão a divulgar o app. Ignora as telas de cobrança.
+- **Controle de Acesso (Paywall):** Se a assinatura vencer, a vitrine continua online temporariamente, mas a revendedora perde o acesso ao botão de "Novo Cadastro" (IA) e às ferramentas de gestão de estoque.
+
+---
+
+## 5. Divisão da Equipe (3 Programadores)
 
 ### 🧑‍💻 Programador 1: Back-end, Infra e IA
 **Foco principal:** Motor do aplicativo e banco de dados.
@@ -59,7 +70,7 @@ Para garantir que cada revendedora tenha o seu próprio "banco de dados" isolado
 
 ---
 
-## 5. Requisitos e Validações Técnicas (Mobile)
+## 6. Requisitos e Validações Técnicas (Mobile)
 
 Para garantir uma aplicação profissional, fluida e com padrão de mercado, a equipe de front-end deverá seguir estas diretrizes rigorosas:
 
@@ -78,7 +89,7 @@ Para garantir uma aplicação profissional, fluida e com padrão de mercado, a e
 
 ---
 
-## 6. Cronograma Macro
+## 7. Cronograma Macro
 
 - **Semana 1:** Setup de Banco de Dados (Prog 1) e Criação/Configuração inicial do repositório Flutter (Prog 2 e 3).
 - **Semana 2:** Integração de API do Gemini para texto/imagem (Prog 1), Criação do fluxo de upload (Prog 2) e Consumo dos dados simulados na UI principal (Prog 3).
