@@ -24,7 +24,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Perfumes da Mayara',
+      title: 'Zetta Vitrine',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       home: const RoleSelectorPage(),

@@ -20,14 +20,9 @@ class RoleSelectorPage extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Text(
-                'Perfumes da Mayara',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                  color: AppTheme.dourado,
-                  fontSize: 42,
-                  fontWeight: FontWeight.bold,
-                ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(35),
+                child: Image.asset('assets/logo_z.png', height: 150),
               ),
             ),
             const SizedBox(height: 60),
