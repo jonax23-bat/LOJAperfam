@@ -1,11 +1,7 @@
-import 'dart:typed_data';
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_theme.dart';
-import 'product_detail_page.dart';
 
 class CatalogPage extends StatefulWidget {
   const CatalogPage({super.key});
@@ -15,340 +11,244 @@ class CatalogPage extends StatefulWidget {
 }
 
 class _CatalogPageState extends State<CatalogPage> {
-  bool _isLoading = false;
-  Map<String, dynamic>? _aiResult;
-  Uint8List? _selectedImage;
+  String _selectedCategory = 'Todos';
+  String _resellerConnectionId = ''; // Pode ser Email ou ID
+  bool _isConnectedByEmail = true;
+  String _storeName = 'CATÁLOGO OFICIAL';
+  String _resellerPhone = '';
+  final _resellerController = TextEditingController();
+  
+  final List<String> _categories = ['Todos', 'Perfume', 'Batom / Maquiagem', 'Creme / Hidratante', 'Sabonete', 'Cabelo'];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkUrlForReseller();
+    });
+  }
+
+  void _checkUrlForReseller() {
+    final uri = Uri.base;
+    if (uri.queryParameters.containsKey('reseller')) {
+      final resellerParam = uri.queryParameters['reseller']!;
+      if (resellerParam.isNotEmpty) {
+        _resellerController.text = resellerParam;
+        _connectToReseller();
+      }
+    }
+  }
+
+  void _connectToReseller() async {
+    final input = _resellerController.text.trim();
+    if (input.isEmpty) return;
+
+    final isEmail = input.contains('@');
+    final queryField = isEmail ? 'email' : FieldPath.documentId;
+
+    // Busca o ID e o Nome da Loja da revendedora pelo e-mail ou ID
+    String fetchedStoreName = 'CATÁLOGO OFICIAL';
+    String fetchedPhone = '';
+    try {
+      final query = await FirebaseFirestore.instance.collection('resellers').where(queryField, isEqualTo: isEmail ? input.toLowerCase() : input).get();
+      if (query.docs.isNotEmpty) {
+        final data = query.docs.first.data();
+        if (data.containsKey('storeName')) {
+          fetchedStoreName = data['storeName'].toString().toUpperCase();
+        }
+        if (data.containsKey('phone')) {
+          fetchedPhone = data['phone'].toString();
+        }
+      }
+    } catch (e) {
+      debugPrint('Erro ao buscar loja: $e');
+    }
+
+    setState(() {
+      _resellerConnectionId = isEmail ? input.toLowerCase() : input;
+      _isConnectedByEmail = isEmail;
+      _storeName = fetchedStoreName;
+      _resellerPhone = fetchedPhone;
+    });
+  }
+
+  void _sendWhatsApp(String productName) async {
+    String phone = _resellerPhone.isNotEmpty ? _resellerPhone : '5511999999999'; 
+    // Limpar pontuação do telefone
+    phone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    // Se tiver 10 ou 11 dígitos, adicionar o 55 do Brasil
+    if (phone.length == 10 || phone.length == 11) {
+      phone = '55$phone';
+    }
+
+    final message = Uri.encodeComponent('Olá! Vi o produto "$productName" no seu catálogo e gostaria de reservar.');
+    final url = 'https://wa.me/$phone?text=$message';
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.only(top: 160, bottom: 40, left: 20, right: 20),
-              child: Column(
-                children: [
-                  if (_selectedImage != null || _aiResult != null) _buildAIPreview(),
-                  _buildProductGrid(context),
-                  const SizedBox(height: 60),
-                  _buildFooter(context),
-                ],
-              ),
-            ),
-          ),
-          Positioned(
-            top: 0, left: 0, right: 0,
-            child: _buildHeader(context),
-          ),
-          const Positioned(
-            left: 24, bottom: 24,
-            child: AdminSpeedDial(),
-          ),
-        ],
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: Text(_storeName, style: const TextStyle(color: AppTheme.dourado, fontWeight: FontWeight.bold)),
+        backgroundColor: AppTheme.vinho,
+        iconTheme: const IconThemeData(color: AppTheme.dourado),
+        elevation: 0,
+        centerTitle: true,
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        backgroundColor: const Color(0xFF25D366),
-        child: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.white),
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      color: AppTheme.vinho,
-      padding: const EdgeInsets.symmetric(vertical: 24),
-      child: Column(
+      body: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const SizedBox(width: 48),
-              Text(
-                'Perfumes da Mayara',
-                style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                      color: AppTheme.dourado,
-                      fontSize: 42,
+          // ÁREA DE CONEXÃO COM REVENDEDORA
+          Container(
+            padding: const EdgeInsets.all(16),
+            color: AppTheme.vinho.withOpacity(0.05),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _resellerController,
+                    decoration: InputDecoration(
+                      hintText: 'Digite o ID ou E-mail da Revendedora',
+                      hintStyle: const TextStyle(fontSize: 12),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
                     ),
-              ),
-              IconButton(
-                onPressed: _isLoading ? null : _pickAndAnalyzeImage,
-                icon: _isLoading
-                    ? const SizedBox(
-                        width: 20, height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.dourado),
-                        ),
-                      )
-                    : const Icon(Icons.camera_alt, color: AppTheme.dourado),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const _HeaderMenu(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAIPreview() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 24),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.creme,
-        border: Border.all(color: AppTheme.dourado, width: 2),
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Row(
-        children: [
-          if (_selectedImage != null)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.memory(_selectedImage!, width: 80, height: 80, fit: BoxFit.cover),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                ElevatedButton(
+                  onPressed: _connectToReseller,
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.vinho, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                  child: const Text('CONECTAR', style: TextStyle(color: Colors.white, fontSize: 12)),
+                ),
+              ],
             ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: _isLoading 
-              ? const Text('Analisando perfume...', style: TextStyle(fontStyle: FontStyle.italic))
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          ),
+
+          if (_resellerConnectionId.isEmpty)
+            const Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text('IA IDENTIFICOU:', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.vinho, fontSize: 12)),
-                    Text(_aiResult?['nome'] ?? 'Nome não identificado', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    Text('Marca: ${_aiResult?['marca'] ?? '-'} | Família: ${_aiResult?['familia_olfativa'] ?? '-'}'),
+                    Icon(Icons.person_search_rounded, size: 80, color: AppTheme.vinho),
+                    SizedBox(height: 20),
+                    Text('Conecte-se a uma loja\npara ver os produtos disponíveis.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
                   ],
                 ),
-          ),
-          IconButton(
-            onPressed: () => setState(() { _aiResult = null; _selectedImage = null; }),
-            icon: const Icon(Icons.close),
-          )
-        ],
-      ),
-    );
-  }
-
-  Future<void> _pickAndAnalyzeImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-    if (image == null) return;
-
-    final bytes = await image.readAsBytes();
-    setState(() {
-      _isLoading = true;
-      _selectedImage = bytes;
-      _aiResult = null;
-    });
-
-    try {
-      const apiKey = 'AIzaSyCuo6qvKZ-FHcG4wfRZcVXMYZfXTbVM21w';
-      const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=$apiKey';
-
-      final body = jsonEncode({
-        "contents": [
-          {
-            "parts": [
-              {"text": "Analise este perfume e retorne APENAS um JSON: {\"nome\": \"string\", \"marca\": \"string\", \"familia_olfativa\": \"string\"}."},
-              {"inline_data": {"mime_type": "image/jpeg", "data": base64Encode(bytes)}}
-            ]
-          }
-        ]
-      });
-
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {"Content-Type": "application/json"},
-        body: body,
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        String textResponse = data['candidates'][0]['content']['parts'][0]['text'];
-        if (textResponse.contains('```')) {
-          textResponse = textResponse.substring(textResponse.indexOf('{'), textResponse.lastIndexOf('}') + 1);
-        }
-        setState(() => _aiResult = jsonDecode(textResponse));
-      }
-    } catch (e) {
-      debugPrint('Erro IA Catálogo: $e');
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Widget _buildProductGrid(BuildContext context) {
-    final products = [
-      {'title': 'MISTÉRIO DO ORIENTE', 'marca': 'Boticário', 'family': 'Amadeirado Especiado', 'image': 'assets/images/perfume1.png'},
-      {'title': 'LUZ DO SOL', 'marca': 'Natura', 'family': 'Floral Vibrante', 'image': 'assets/images/perfume2.png'},
-      {'title': 'MAINTIEE', 'marca': 'Mayara', 'family': 'Cítrico Refrescante', 'image': 'assets/images/perfume1.png'},
-      {'title': 'ESSÊNCIA REAL', 'marca': 'Mayara', 'family': 'Oriental Gourmet', 'image': 'assets/images/perfume2.png'},
-      {'title': 'BRISA DO MAR', 'marca': 'Natura', 'family': 'Aromático Aquático', 'image': 'assets/images/perfume1.png'},
-      {'title': 'PÉROLA NEGRA', 'marca': 'Boticário', 'family': 'Chypre Floral', 'image': 'assets/images/perfume2.png'},
-    ];
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        int crossAxisCount = constraints.maxWidth > 800 ? 3 : (constraints.maxWidth > 600 ? 2 : 1);
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            childAspectRatio: 0.75,
-            crossAxisSpacing: 24,
-            mainAxisSpacing: 24,
-          ),
-          itemCount: products.length,
-          itemBuilder: (context, index) {
-            return ProductCard(
-              title: products[index]['title']!,
-              brand: products[index]['marca']!,
-              family: products[index]['family']!,
-              image: products[index]['image']!,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ProductDetailPage(
-                    title: products[index]['title']!,
-                    brand: products[index]['marca']!,
-                    family: products[index]['family']!,
-                    image: products[index]['image']!,
-                  ),
-                ),
               ),
-            );
-          },
-        );
-      }
-    );
-  }
-
-  Widget _buildFooter(BuildContext context) {
-    return Text('© 2024 Perfumes da Mayara.', style: TextStyle(color: AppTheme.pretoSuave.withOpacity(0.5), fontSize: 12));
-  }
-}
-
-class _HeaderMenu extends StatefulWidget {
-  const _HeaderMenu();
-  @override
-  State<_HeaderMenu> createState() => _HeaderMenuState();
-}
-
-class _HeaderMenuState extends State<_HeaderMenu> {
-  bool _showCategories = false;
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        _navItem('SOBRE NÓS'),
-        const SizedBox(width: 32),
-        _buildProductsItem(),
-        const SizedBox(width: 32),
-        _navItem('CONTATO'),
-      ],
-    );
-  }
-
-  Widget _buildProductsItem() {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _showCategories = true),
-      onExit: (_) => setState(() => _showCategories = false),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Row(children: [
-            _navItem('PRODUTOS'),
-            const SizedBox(width: 4),
-            const Icon(Icons.keyboard_arrow_down, color: AppTheme.dourado, size: 16),
-          ]),
-          if (_showCategories)
-            Positioned(
-              top: 20, left: 0,
-              child: Container(
-                width: 160, margin: const EdgeInsets.only(top: 8), padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: AppTheme.vinho, border: Border.all(color: AppTheme.dourado.withOpacity(0.5))),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  _categoryItem('Femininos'), _categoryItem('Masculinos'),
-                ]),
+            )
+          else ...[
+            // FILTROS
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: _categories.map((cat) => Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text(cat),
+                    selected: _selectedCategory == cat,
+                    onSelected: (val) => setState(() => _selectedCategory = cat),
+                    selectedColor: AppTheme.vinho,
+                    labelStyle: TextStyle(color: _selectedCategory == cat ? Colors.white : AppTheme.vinho),
+                    backgroundColor: AppTheme.vinho.withOpacity(0.05),
+                  ),
+                )).toList(),
               ),
             ),
-        ],
-      ),
-    );
-  }
+            
+            // GRID DINÂMICA DO FIRESTORE
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                // FILTRA POR REVENDEDORA (e-mail ou ID)
+                stream: FirebaseFirestore.instance
+                    .collection('products')
+                    .where(_isConnectedByEmail ? 'resellerEmail' : 'resellerId', isEqualTo: _resellerConnectionId)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) return const Center(child: Text('Erro ao carregar catálogo.'));
+                  if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator(color: AppTheme.vinho));
 
-  Widget _categoryItem(String title) {
-    return Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 13)));
-  }
+                  final docs = snapshot.data!.docs;
+                  
+                  // Filtro de Categoria Local
+                  final filteredDocs = _selectedCategory == 'Todos' 
+                      ? docs 
+                      : docs.where((d) => d['categoria'] == _selectedCategory).toList();
 
-  Widget _navItem(String title) {
-    return Text(title, style: const TextStyle(color: AppTheme.dourado, fontWeight: FontWeight.w500, fontSize: 14));
-  }
-}
+                  if (filteredDocs.isEmpty) {
+                    return const Center(child: Text('Nenhum produto encontrado nesta categoria.'));
+                  }
 
-class ProductCard extends StatelessWidget {
-  final String title, brand, family, image;
-  final VoidCallback onTap;
-
-  const ProductCard({
-    super.key, 
-    required this.title, 
-    required this.brand, 
-    required this.family, 
-    required this.image,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppTheme.creme, 
-          border: Border.all(color: AppTheme.dourado.withOpacity(0.3)),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          children: [
-            Expanded(child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Image.asset(image, fit: BoxFit.contain),
-            )),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  Text(brand.toUpperCase(), style: const TextStyle(color: AppTheme.dourado, fontWeight: FontWeight.bold, fontSize: 10)),
-                  const SizedBox(height: 4),
-                  Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Text(family, style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
-                  const SizedBox(height: 12),
-                  ElevatedButton(
-                    onPressed: onTap, 
-                    style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 36)),
-                    child: const Text('Ver Detalhes'),
-                  ),
-                ],
+                  return GridView.builder(
+                    padding: const EdgeInsets.all(16),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 0.6,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                    ),
+                    itemCount: filteredDocs.length,
+                    itemBuilder: (context, index) {
+                      final p = filteredDocs[index].data() as Map<String, dynamic>;
+                      return _buildProductCard(p);
+                    },
+                  );
+                },
               ),
             ),
           ],
-        ),
+        ],
       ),
     );
   }
-}
 
-class AdminSpeedDial extends StatelessWidget {
-  const AdminSpeedDial({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return FloatingActionButton(onPressed: () {}, backgroundColor: AppTheme.vinho, child: const Icon(Icons.add, color: AppTheme.dourado));
+  Widget _buildProductCard(Map<String, dynamic> p) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              child: p['foto'].toString().startsWith('http') 
+                ? Image.network(p['foto'], fit: BoxFit.cover, width: double.infinity,
+                    errorBuilder: (context, error, stack) => const Icon(Icons.image_not_supported, color: Colors.grey),
+                  )
+                : const Center(child: Icon(Icons.image, color: Colors.grey, size: 50)),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(p['marca'].toString().toUpperCase(), style: const TextStyle(color: AppTheme.dourado, fontSize: 10, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text(p['nome'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 8),
+                Text('R\$ ${p['preco'].toStringAsFixed(2)}', style: const TextStyle(color: AppTheme.vinho, fontWeight: FontWeight.w900, fontSize: 15)),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: () => _sendWhatsApp(p['nome']),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.vinho, minimumSize: const Size(double.infinity, 36), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                  child: const Text('RESERVAR', style: TextStyle(fontSize: 12, color: Colors.white)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

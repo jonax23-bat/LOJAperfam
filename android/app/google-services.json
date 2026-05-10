@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "62052744777",
+    "project_id": "perfumes-da-mayar",
+    "storage_bucket": "perfumes-da-mayar.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:62052744777:android:21c791e985a82102900998",
+        "android_client_info": {
+          "package_name": "com.example.projeto_catalogo_digital"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "62052744777-t1rj5m5u8d0sar2foeov0g0qupkl9ct1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA51EVTfyf3rFXmOumc4Z6ToDwVs-uMUp4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "62052744777-t1rj5m5u8d0sar2foeov0g0qupkl9ct1.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "62052744777-7n4eni11cj6f3g77r3tcglp9o927ijg1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.projetoCatalogoDigital"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
